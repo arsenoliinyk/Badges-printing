@@ -1,11 +1,33 @@
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class Badge {
     public Badge() {}
+
+    public static List<String> convertEmailsToFullNames(String emails) {
+        Pattern patternEmailWithSubaddressing = Pattern.compile("([\\p{L}]+)\\.([\\p{L}]+)\\+([\\p{L}0-9]+)@([\\p{L}0-9.-]+)");
+        Pattern patternEmailDefault = Pattern.compile("([\\p{L}]+)\\.([\\p{L}]+)@([\\p{L}0-9.-]+)");
+        Pattern patternEmailWithoutFirstname = Pattern.compile("(^|\\s)([\\p{L}]+)@([\\p{L}0-9.-]+)");
+
+        List<String> namesFromDefaultEmails = extractNamesFromEmailsListByPattern(emails, patternEmailDefault, true);
+        List<String> namesEmailWithoutFirstname = extractNamesFromEmailsListByPattern(emails, patternEmailWithoutFirstname,  false);
+        List<String> namesFromEmailWithSubaddressing = extractNamesFromEmailsListByPattern(emails, patternEmailWithSubaddressing,  true);
+
+        return Stream.of(namesFromDefaultEmails, namesFromEmailWithSubaddressing, namesEmailWithoutFirstname)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+    }
+
+    public static List<String> extractNamesFromEmailsListByPattern(String emails, Pattern pattern, boolean withLastName) {
+        Matcher matcher = pattern.matcher(emails);
+        return extractNames(matcher, withLastName);
+    }
 
     private static String makeFirstLetterCapital(String word, boolean getFullName) {
         String lowercaseWord = word.toLowerCase();
@@ -16,20 +38,16 @@ class Badge {
                 : fistLetter;
     }
 
-    public static List<String> convertEmailsToFullNames(String emails) {
-        //Pattern pattern = Pattern.compile("^(?=.{1,64}@)[A-Za-z0-9_-]+(\\\\.[A-Za-z0-9_-]+)*@[^-][A-Za-z0-9-]+(\\\\.[A-Za-z0-9-]+)*(\\\\.[A-Za-z]{2,})$");
-        //Pattern pattern = Pattern.compile("^(?=.{1,64}@)[\\\\p{L}0-9_-]+(\\\\.[\\\\p{L}0-9_-]+)*@[^-][\\\\p{L}0-9-]+(\\\\.[\\\\p{L}0-9-]+)*(\\\\.[\\\\p{L}]{2,})$");
-
-
-        //Pattern pattern = Pattern.compile("([A-Za-z]+)\\.([A-Za-z]+)@([A-Za-z0-9.-]+)");
-        Pattern pattern = Pattern.compile("([\\p{L}]+)\\.([\\p{L}]+)@([\\p{L}0-9.-]+)");
-
-        Matcher matcher = pattern.matcher(emails);
+    public static List<String> extractNames(Matcher matcher, boolean withLastname) {
         List<String> fullName = new ArrayList<>();
         while (matcher.find()) {
-            String fistName = makeFirstLetterCapital(matcher.group(1), true);
-            String lastName = makeFirstLetterCapital(matcher.group(2), false);
-            fullName.add(fistName + " " + lastName);
+            String fistName =  withLastname
+                    ? makeFirstLetterCapital(matcher.group(1), true)
+                    : "";
+            String spaceLastName = withLastname
+                    ? " " + makeFirstLetterCapital(matcher.group(2), false)
+                    : makeFirstLetterCapital(matcher.group(2), true) ;
+            fullName.add(fistName + spaceLastName);
         }
         return fullName;
     }
@@ -45,7 +63,7 @@ class Badge {
 
 public class Main {
     public static void main(String[] args) {
-        String stringInput = "john.doe@abc.com; Alex.Boe@cde.org; Årsén.öliynyk@example.com; іван.Квітка@фірма.укр";
+        String stringInput = "melnyk@cde.org; john.doe@abc.com; Alex.Boe@cde.org; marych@cde.org; Johnny.Depp+reg@cde.org; Årsén.öliynyk@example.com; Ruslan.Chao+reg@cde.org; іван.Квітка@фірма.укр; öliynyk@example.com";
 
         List<String> fullNames = Badge.convertEmailsToFullNames(stringInput);
         Badge.printFullNamesList(fullNames);
@@ -57,6 +75,5 @@ public class Main {
         expectedBadgeList.add( "Alex B" );
         System.out.println(expectedBadgeList);
     }
-
 
 }
