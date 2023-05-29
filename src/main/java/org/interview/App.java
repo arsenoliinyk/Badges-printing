@@ -13,12 +13,14 @@ class Badge {
         Pattern patternEmailDefault = Pattern.compile("([\\p{L}0-9]+)\\.([\\p{L}0-9]+)@([\\p{L}0-9.-]+)");
         Pattern patternEmailWithoutLastname = Pattern.compile("(^|\\s)([\\p{L}0-9]+)@([\\p{L}0-9.-]+)");
         Pattern patternEmailWithSubaddressing = Pattern.compile("([\\p{L}0-9]+)\\.([\\p{L}0-9]+)\\+([\\p{L}0-9]+)@([\\p{L}0-9.-]+)");
+        Pattern patternEmailWithMultipleDots = Pattern.compile("([\\p{L}0-9]+)\\.([\\p{L}0-9]+)(\\.[\\p{L}0-9]+)@([\\p{L}0-9.-]+)");
 
         List<String> namesFromDefaultEmails = extractNamesFromEmailsListByPattern(emails, patternEmailDefault, true);
         List<String> namesEmailWithoutLastname = extractNamesFromEmailsListByPattern(emails, patternEmailWithoutLastname,  false);
         List<String> namesFromEmailWithSubaddressing = extractNamesFromEmailsListByPattern(emails, patternEmailWithSubaddressing,  true);
+        List<String> namesFromEmailWithMultipleDots = extractNamesFromEmailsListByPattern(emails, patternEmailWithMultipleDots,  true);
 
-        return Stream.of(namesFromDefaultEmails, namesFromEmailWithSubaddressing, namesEmailWithoutLastname)
+        return Stream.of(namesFromDefaultEmails, namesFromEmailWithSubaddressing, namesEmailWithoutLastname, namesFromEmailWithMultipleDots)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }
@@ -28,32 +30,35 @@ class Badge {
         return extractNames(matcher, withFirstName);
     }
 
-    private static String makeFirstLetterCapital(String word, boolean getFullName) {
-        String lowercaseWord = word.toLowerCase();
-        String fistLetter = lowercaseWord.substring(0, 1).toUpperCase();
-        String wordWithoutFirstLetter = lowercaseWord.substring(1,  maximumLengthWord(lowercaseWord));
-        return getFullName
-                ? fistLetter + wordWithoutFirstLetter
-                : fistLetter;
-    }
-
-    private static int maximumLengthWord(String word){
-        return Math.min(word.length(), 15);
-    };
-
     public static List<String> extractNames(Matcher matcher, boolean withFirstname) {
         List<String> fullName = new ArrayList<>();
         while (matcher.find()) {
-            String fistName =  withFirstname
-                    ? makeFirstLetterCapital(matcher.group(1), true)
-                    : makeFirstLetterCapital(matcher.group(2), true) ;
+            String firstName =  withFirstname
+                    ? wordFormatting(matcher.group(1), true, true)
+                    : wordFormatting(matcher.group(2), true, false);
             String spaceLastName = withFirstname
-                    ? " " + makeFirstLetterCapital(matcher.group(2), false)
+                    ? " " + wordFormatting(matcher.group(2), false, true)
                     : "";
-            fullName.add(fistName + spaceLastName);
+            fullName.add(firstName + spaceLastName);
         }
         return fullName;
     }
+
+    private static String wordFormatting(String word, boolean getFullName, boolean withFirstname) {
+        String lowercaseWord = word.toLowerCase();
+        String firstLetter = lowercaseWord.substring(0, 1).toUpperCase();
+        String wordWithoutFirstLetter = maximumLengthWord(lowercaseWord, withFirstname);
+        return getFullName
+                ? firstLetter + wordWithoutFirstLetter
+                : firstLetter;
+    }
+
+    private static String maximumLengthWord(String word, boolean withFirstname){
+        return withFirstname
+                ? word.substring(1,Math.min(word.length(), 13))
+                : word.substring(1,Math.min(word.length(), 15));
+
+    };
 
     public static void printFullNamesList(List<String> fullNames) {
         String list = fullNames.stream()
@@ -66,7 +71,7 @@ class Badge {
 
 public class Main {
     public static void main(String[] args) {
-        String stringInput = "steward@cde.org; john.doe@abc.com; Alex.Boe@cde.org; fredrich@cde.org; Johnny.Depp+reg@cde.org; Årsén.öliynyk@example.com; Ruslan.Chao+reg@cde.org; іван.Квітка@фірма.укр; ölaf@example.com; juan2002@inbox.io; Rosa.Rio05@server5.io; AndrewAlexandres.Fox@server.io; domenicusverduis@server.ro";
+        String stringInput = "steward@cde.org; john.doe@abc.com; Alex.Boe@cde.org; fredrich@cde.org; Johnny.Depp+reg@cde.org; Årsén.öliynyk@example.com; Ruslan.Chao+reg@cde.org; іван.Квітка@фірма.укр; ölaf@example.com; juan2002@inbox.io; Rosa.Rio05@server5.io; AndrewAlexander.Fox@server.io; domenicusverduis@server.ro; Jack.Sparrow.Captain@tortuga.is";
 
         List<String> fullNames = Badge.convertEmailsToFullNames(stringInput);
         Badge.printFullNamesList(fullNames);
